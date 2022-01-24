@@ -11,5 +11,5 @@ export class CreatePostDto {
     @IsString()
     body: string
 
-    userId: string
+    categories: string[]
 }

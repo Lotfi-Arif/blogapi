@@ -1,20 +1,26 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Query } from '@nestjs/common';
 import { PostsService } from './posts.service';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
+import { Me } from 'src/auth/guards/me.guard';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth-guard.guard'
+import { PostQueryDto } from './dto/query.dto';
+import { isEmpty } from '../util/index';
 
 @Controller('posts')
 export class PostsController {
-  constructor(private readonly postsService: PostsService) {}
+  constructor(private readonly postsService: PostsService) { }
 
   @Post()
-  create(@Body() createPostDto: CreatePostDto) {
-    return this.postsService.create(createPostDto);
+  @UseGuards(JwtAuthGuard)
+  create(@Me() {id, email}, @Body() createPostDto: CreatePostDto) {
+    const categories = createPostDto.categories?.map(category => ({ id: category }))
+    return this.postsService.create({ ...createPostDto, author: { connect: { id } }, categories: { connect: categories }});
   }
 
   @Get()
-  findAll() {
-    return this.postsService.findAll();
+  findAll(@Query() query: PostQueryDto) {
+    return this.postsService.findAll(isEmpty(query) ? null : query);
   }
 
   @Get(':id')
@@ -24,7 +30,8 @@ export class PostsController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updatePostDto: UpdatePostDto) {
-    return this.postsService.update(id, updatePostDto);
+    const categories = updatePostDto.categories?.map(category => ({ id: category }))
+    return this.postsService.update(id, {...updatePostDto, categories: { connect: categories }} );
   }
 
   @Delete(':id')
